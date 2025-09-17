@@ -23,29 +23,27 @@ class QuizGame:
 
     def list_categories(self) -> List[str]:
         """Получить список доступных категорий из базы данных."""
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
-        cur.execute("SELECT DISTINCT category FROM questions ORDER BY category")
-        categories = [row[0] for row in cur.fetchall()]
-        conn.close()
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT category FROM questions ORDER BY category")
+            categories = [row[0] for row in cur.fetchall()]
         return categories
 
     def start_game(self, category: str, questions_count: int = 10) -> None:
         """Начать игру с выбором вопросов из указанной категории."""
         self.reset()
         
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
-        
-        # Получаем все вопросы из категории
-        cur.execute("""
-            SELECT id, category, text, option1, option2, option3, option4, correct_index 
-            FROM questions 
-            WHERE category = ?
-        """, (category,))
-        
-        rows = cur.fetchall()
-        conn.close()
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            
+            # Получаем все вопросы из категории
+            cur.execute("""
+                SELECT id, category, text, option1, option2, option3, option4, correct_index 
+                FROM questions 
+                WHERE category = ?
+            """, (category,))
+            
+            rows = cur.fetchall()
         
         # Если вопросов меньше чем questions_count — брать все
         if len(rows) <= questions_count:
@@ -68,7 +66,9 @@ class QuizGame:
     def get_next_question(self) -> Optional[Question]:
         """Получить следующий вопрос."""
         if self.current_index < len(self.questions):
-            return self.questions[self.current_index]
+            question = self.questions[self.current_index]
+            self.current_index += 1
+            return question
         return None
 
     def check_answer(self, question_id: int, selected_index: int, time_spent_sec: float) -> bool:
@@ -87,14 +87,11 @@ class QuizGame:
         is_correct = selected_index == current_question.correct_index
         
         if is_correct:
-            # +10 за правильный ответ
-            points = 10
-            # Бонус: max(0, 5 - int(time_spent_sec))
-            bonus = max(0, 5 - int(time_spent_sec))
-            self.score += points + bonus
-        
-        # Переходим к следующему вопросу
-        self.current_index += 1
+            # Базовые 100 очков за правильный ответ
+            base_points = 100
+            # Бонус за скорость: (20 - время) * 5
+            speed_bonus = max(0, (START_SECONDS - time_spent_sec) * 5)
+            self.score += base_points + int(speed_bonus)
         
         return is_correct
 
