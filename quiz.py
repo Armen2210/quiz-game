@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
+import sqlite3
+import random
+
+START_SECONDS = 20
 
 @dataclass
 class Question:
@@ -17,25 +21,93 @@ class QuizGame:
         self.questions = []
         self.current_index = 0
 
+    def list_categories(self) -> List[str]:
+        """Получить список доступных категорий из базы данных."""
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT category FROM questions ORDER BY category")
+        categories = [row[0] for row in cur.fetchall()]
+        conn.close()
+        return categories
+
     def start_game(self, category: str, questions_count: int = 10) -> None:
-        print(f"[Quiz] Start game with category: {category}")
-        # TODO: Выборка из базы
+        """Начать игру с выбором вопросов из указанной категории."""
+        self.reset()
+        
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.cursor()
+        
+        # Получаем все вопросы из категории
+        cur.execute("""
+            SELECT id, category, text, option1, option2, option3, option4, correct_index 
+            FROM questions 
+            WHERE category = ?
+        """, (category,))
+        
+        rows = cur.fetchall()
+        conn.close()
+        
+        # Если вопросов меньше чем questions_count — брать все
+        if len(rows) <= questions_count:
+            selected_rows = rows
+        else:
+            # Случайно выбираем нужное количество вопросов
+            selected_rows = random.sample(rows, questions_count)
+        
+        # Преобразуем в объекты Question
+        for row in selected_rows:
+            question = Question(
+                id=row[0],
+                category=row[1],
+                text=row[2],
+                options=[row[3], row[4], row[5], row[6]],
+                correct_index=row[7]
+            )
+            self.questions.append(question)
 
     def get_next_question(self) -> Optional[Question]:
-        print("[Quiz] Get next question")
+        """Получить следующий вопрос."""
+        if self.current_index < len(self.questions):
+            return self.questions[self.current_index]
         return None
 
     def check_answer(self, question_id: int, selected_index: int, time_spent_sec: float) -> bool:
-        print("[Quiz] Check answer")
-        return False
+        """Проверить ответ и обновить счет."""
+        # Находим вопрос по ID
+        current_question = None
+        for question in self.questions:
+            if question.id == question_id:
+                current_question = question
+                break
+        
+        if current_question is None:
+            return False
+        
+        # Проверяем правильность ответа
+        is_correct = selected_index == current_question.correct_index
+        
+        if is_correct:
+            # +10 за правильный ответ
+            points = 10
+            # Бонус: max(0, 5 - int(time_spent_sec))
+            bonus = max(0, 5 - int(time_spent_sec))
+            self.score += points + bonus
+        
+        # Переходим к следующему вопросу
+        self.current_index += 1
+        
+        return is_correct
 
     def get_score(self) -> int:
+        """Получить текущий счет."""
         return self.score
 
     def get_remaining(self) -> int:
+        """Получить количество оставшихся вопросов (включая текущий)."""
         return len(self.questions) - self.current_index
 
     def reset(self) -> None:
+        """Сбросить состояние игры."""
         self.score = 0
         self.questions = []
         self.current_index = 0
