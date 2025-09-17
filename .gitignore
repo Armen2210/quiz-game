@@ -205,3 +205,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# === IDE / Editors ===
+
+# PyCharm (JetBrains)
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Cursor editor
+.cursorignore
+.cursorindexingignore
+
+# === Python environments ===
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# === System files ===
+.DS_Store
+Thumbs.db
+
