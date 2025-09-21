@@ -2,12 +2,13 @@ import tkinter as tk
 from tkinter import simpledialog, filedialog
 from quiz import Question
 from typing import List, Optional, Dict, Any, Callable
+from PIL import Image, ImageTk
 
 class QuizUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Quiz Game")
-        self.geometry("500x520")
+        self.geometry("600x600")
         self.timer_id = None
         self.total_seconds = 0
         self._categories: List[str] = []
@@ -59,9 +60,55 @@ class QuizUI(tk.Tk):
             title="Выберите аватар",
             filetypes=[("Images", "*.png;*.jpg;*.jpeg")]
         )
-        # Вызов колбэка с новыми данными
-        self.on_update_profile(new_name, avatar_path or None)
 
+        if not avatar_path:  # нажал Cancel
+            self.on_update_profile(new_name, None)
+        else:
+            self.on_update_profile(new_name, avatar_path)
+
+    def show_profile(self, profile_data: dict, stats: dict):
+        self._cancel_timer_if_any()
+
+        # Очистка окна
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        # Основной контейнер
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # Заголовок
+        title_label = tk.Label(main_frame, text="Профиль игрока",
+                               font=("Arial", 20, "bold"))
+        title_label.pack(pady=10)
+
+        # Разделитель
+        tk.Frame(main_frame, height=2, bg="gray").pack(fill=tk.X, pady=10)
+
+        # === блок информации о пользователе ===
+        user_frame = tk.Frame(main_frame)  # ← создаём user_frame здесь
+        user_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(user_frame, text="Имя:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
+                 font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
+
+        # --- аватар (если есть) ---
+
+        avatar_path = profile_data.get("avatar")
+        if avatar_path:
+            try:
+                img = Image.open(avatar_path)
+                img = img.resize((120, 120))  # немного больше для наглядности
+                photo = ImageTk.PhotoImage(img)
+
+                # сохраняем в self, а не в локальную переменную
+                self.avatar_photo = photo
+
+                avatar_label = tk.Label(user_frame, image=self.avatar_photo)
+                avatar_label.grid(row=1, column=0, columnspan=2, pady=10)
+            except Exception as e:
+                print(f"[WARNING] Ошибка загрузки аватара: {e}")
 
     def bind_actions(self,
                      on_start_game: Callable[[str], None],
@@ -139,7 +186,8 @@ class QuizUI(tk.Tk):
                 "history": "История",
                 "science": "Наука",
                 "culture": "Культура",
-                "sport": "Спорт"
+                "sport": "Спорт",
+                "geography": "География"
             }
 
             display_name = category_names.get(category, category.capitalize())
@@ -412,7 +460,8 @@ class QuizUI(tk.Tk):
                     "history": "История",
                     "science": "Наука",
                     "culture": "Культура",
-                    "sport": "Спорт"
+                    "sport": "Спорт",
+                    "geography": "География"
                 }
 
                 display_name = category_names.get(category_name, category_name.capitalize())

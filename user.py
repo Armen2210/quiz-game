@@ -4,6 +4,7 @@ from scripts.init_db import get_connection
 import sqlite3
 from datetime import datetime
 
+
 class UserProfile:
     def __init__(self, db_path: Path):
         self.db_path = db_path
@@ -30,9 +31,6 @@ class UserProfile:
         except sqlite3.IntegrityError:
             conn.rollback()
             raise ValueError(f"Пользователь с именем '{name}' уже существует")
-        except Exception as e:
-            conn.rollback()
-            raise Exception(f"Ошибка при создании профиля: {e}")
         finally:
             conn.close()
 
@@ -58,13 +56,17 @@ class UserProfile:
         }
 
     def update_profile(self, user_id: int, name: Optional[str] = None, avatar_path: Optional[Path] = None) -> None:
-
         updates = []
         params = []
 
-        if name is not None:
-            if not name.strip():
-                raise ValueError("Имя пользователя не может быть пустым")
+        # Загружаем текущие данные пользователя
+        conn = get_connection(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+        current_name = cursor.fetchone()[0]
+
+        # Обновляем имя только если оно реально изменилось
+        if name is not None and name.strip() and name.strip() != current_name:
             updates.append("name = ?")
             params.append(name.strip())
 
@@ -72,25 +74,19 @@ class UserProfile:
             updates.append("avatar_path = ?")
             params.append(str(avatar_path))
 
-        if not updates:
+        if not updates:  # нечего обновлять
+            conn.close()
             return
 
         params.append(user_id)
-
-        conn = get_connection(self.db_path)
-        cursor = conn.cursor()
 
         try:
             query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
             cursor.execute(query, params)
             conn.commit()
-
         except sqlite3.IntegrityError:
             conn.rollback()
             raise ValueError(f"Имя '{name}' уже занято другим пользователем")
-        except Exception as e:
-            conn.rollback()
-            raise Exception(f"Ошибка при обновлении профиля: {e}")
         finally:
             conn.close()
 
@@ -106,10 +102,6 @@ class UserProfile:
                 (user_id, category, score, duration_sec, played_at)
             )
             conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            raise Exception(f"Ошибка при сохранении результата: {e}")
         finally:
             conn.close()
 
@@ -118,35 +110,29 @@ class UserProfile:
         cursor = conn.cursor()
 
         cursor.execute('''
-                SELECT 
-                    COUNT(*) as games_played,
-                    COALESCE(MAX(score), 0) as best_score,
-                    COALESCE(AVG(score), 0.0) as avg_score
-                FROM results 
-                WHERE user_id = ?
-                ''', (user_id,))
-
+            SELECT 
+                COUNT(*) as games_played,
+                COALESCE(MAX(score), 0) as best_score,
+                COALESCE(AVG(score), 0.0) as avg_score
+            FROM results 
+            WHERE user_id = ?
+        ''', (user_id,))
         stats = cursor.fetchone()
 
         cursor.execute('''
-                SELECT 
-                    category,
-                    COUNT(*) as games,
-                    COALESCE(AVG(score), 0.0) as avg_score
-                FROM results 
-                WHERE user_id = ?
-                GROUP BY category
-                ORDER BY category
-                ''', (user_id,))
-
-        by_category = []
-        for row in cursor.fetchall():
-            by_category.append({
-                "category": row[0],
-                "games": row[1],
-                "avg_score": round(float(row[2]), 2)
-            })
-
+            SELECT 
+                category,
+                COUNT(*) as games,
+                COALESCE(AVG(score), 0.0) as avg_score
+            FROM results 
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY category
+        ''', (user_id,))
+        by_category = [
+            {"category": row[0], "games": row[1], "avg_score": round(float(row[2]), 2)}
+            for row in cursor.fetchall()
+        ]
         conn.close()
 
         return {
@@ -161,12 +147,8 @@ class UserProfile:
         cursor = conn.cursor()
 
         try:
-            cursor.execute(
-                'SELECT id FROM users WHERE name = ?',
-                ('Player1',)
-            )
+            cursor.execute('SELECT id FROM users WHERE name = ?', ('Player1',))
             user = cursor.fetchone()
-
             if user:
                 return user[0]
 
@@ -178,9 +160,5 @@ class UserProfile:
             user_id = cursor.lastrowid
             conn.commit()
             return user_id
-
-        except Exception as e:
-            conn.rollback()
-            raise Exception(f"Ошибка при создании пользователя по умолчанию: {e}")
         finally:
             conn.close()
