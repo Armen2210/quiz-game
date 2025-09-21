@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import simpledialog, filedialog
 from quiz import Question
 from typing import List, Optional, Dict, Any, Callable
 
@@ -7,7 +6,7 @@ class QuizUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Quiz Game")
-        self.geometry("500x520")
+        self.geometry("500x500")
         self.timer_id = None
         self.total_seconds = 0
         self._categories: List[str] = []
@@ -42,24 +41,11 @@ class QuizUI(tk.Tk):
             self._disable_options()
             self.on_time_up(int(self.total_seconds))  # ← Передаем общее время
 
-    def _edit_profile(self, profile_data: dict):
-        """Диалог редактирования профиля"""
-        # Запрос имени
-        new_name = simpledialog.askstring(
-            "Имя",
-            "Введите имя:",
-            initialvalue=profile_data.get("name", "")
-        )
-        # Если пользователь нажал Cancel
-        if new_name is None:
-            return
-        # Запрос аватара
-        avatar_path = filedialog.askopenfilename(
-            title="Выберите аватар",
-            filetypes=[("Images", "*.png;*.jpg;*.jpeg")]
-        )
-        # Вызов колбэка с новыми данными
-        self.on_update_profile(new_name, avatar_path or None)
+    def _cancel_timer_if_any(self):
+        """Отменяет таймер если он активен"""
+        if getattr(self, "timer_id", None) is not None:
+            self.after_cancel(self.timer_id)
+            self.timer_id = None
 
 
     def bind_actions(self,
@@ -80,7 +66,7 @@ class QuizUI(tk.Tk):
     def set_categories(self, categories: List[str]) -> None:
         """Устанавливает список доступных категорий"""
         self._categories = categories or []
-
+        print(f"[UI] Categories set: {self._categories}")  # Для отладки
 
     def show_main_menu(self):
         self._cancel_timer_if_any()
@@ -103,7 +89,8 @@ class QuizUI(tk.Tk):
         exit_button.pack(pady=10)
 
 
-    def show_category_menu(self, categories: List[str]):
+    def show_category_menu(self, categories):
+        print(f"[UI] Showing category menu with: {categories}")
         self._cancel_timer_if_any()
         """
         Отображает меню выбора категории с кнопками для каждой категории
@@ -144,7 +131,7 @@ class QuizUI(tk.Tk):
             display_name = category_names.get(category, category.capitalize())
 
             # Создаем кнопку категории
-            category_btn = tk.Button(categories_frame,
+            category_btn = tk.Button(self,
                                      text=display_name,
                                      command=lambda c=category: self.on_start_game(c),
                                      width=25,
@@ -179,20 +166,21 @@ class QuizUI(tk.Tk):
         for widget in self.winfo_children():
             widget.destroy()
 
-        # Сохраняем время
-        self.total_seconds = int(timer_sec)
+        # Сохраняем общее время на вопрос
+        self.total_seconds = int(timer_sec)  # ← Добавить
         self.current_time = int(timer_sec)
 
         # Основной фрейм
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
 
-        # Верхняя панель
+        # Верхняя панель: счет и оставшиеся вопросы
         top_frame = tk.Frame(main_frame)
         top_frame.pack(fill=tk.X, pady=(0, 20))
 
         tk.Label(top_frame, text=f"Счет: {score}",
                  font=("Arial", 12, "bold"), fg="green").pack(side=tk.LEFT)
+
         tk.Label(top_frame, text=f"Осталось вопросов: {remaining}",
                  font=("Arial", 12), fg="blue").pack(side=tk.RIGHT)
 
@@ -201,23 +189,31 @@ class QuizUI(tk.Tk):
                                     font=("Arial", 14, "bold"), fg="red")
         self.timer_label.pack(pady=(0, 10))
 
+        # Запускаем обновление таймера
+        self.current_time = timer_sec
+        self.update_timer()
+
         # Текст вопроса
         question_frame = tk.Frame(main_frame)
         question_frame.pack(fill=tk.X, pady=20)
+
         question_label = tk.Label(question_frame, text=question.text,
-                                  font=("Arial", 14), wraplength=450, justify=tk.CENTER)
+                                  font=("Arial", 14),
+                                  wraplength=450,
+                                  justify=tk.CENTER)
         question_label.pack()
 
         # Фрейм для вариантов ответов
         options_frame = tk.Frame(main_frame)
         options_frame.pack(fill=tk.BOTH, expand=True, pady=20)
 
-        # СОЗДАЕМ КНОПКИ - ИСПРАВЛЕННЫЙ КОД
+        # Создаем кнопки вариантов ответов
         self.option_buttons = []
-        for i, opt in enumerate(question.options):  # ← opt, не option!
+
+        for i, opt in enumerate(question.options):
             btn = tk.Button(options_frame,
-                            text=opt,  # ← исправлено на opt
-                            command=lambda idx=i: self._on_answer_click(idx),  # ← исправлено на _on_answer_click
+                            text=option,
+                            command=lambda idx=i: self.on_answer_click(idx),
                             width=40,
                             height=2,
                             font=("Arial", 11),
@@ -227,7 +223,7 @@ class QuizUI(tk.Tk):
             btn.pack(pady=8)
             self.option_buttons.append(btn)
 
-        # Кнопка выхода
+        # Кнопка выхода (на случай, если пользователь хочет прервать игру)
         exit_button = tk.Button(main_frame,
                                 text="Выход в меню",
                                 command=self.on_back_to_menu,
@@ -236,22 +232,20 @@ class QuizUI(tk.Tk):
                                 font=("Arial", 10),
                                 bg="#ffcccc")
         exit_button.pack(pady=10)
+        self.timer_id = self.after(1000, self._tick)  # ← Запуск таймера
 
-        # Запускаем таймер
-        self.timer_id = self.after(1000, self._tick)
-
-    # def update_timer(self):
-    #     """Обновляет отображение таймера каждую секунду"""
-    #     if hasattr(self, 'current_time') and self.current_time > 0:
-    #         self.timer_label.config(text=f"⏰ {self.current_time} сек")
-    #         self.current_time -= 1
-    #         # Планируем следующее обновление через 1000 мс (1 секунду)
-    #         self.timer_id = self.after(1000, self.update_timer)
-    #     else:
-    #         # Время вышло
-    #         self.timer_label.config(text="⏰ Время вышло!", fg="red")
-    #         self._disable_options()  # Отключаем кнопки
-    #         self.on_time_up(0)  #  time_spent_sec = 0 (не успел ответить)
+    def update_timer(self):
+        """Обновляет отображение таймера каждую секунду"""
+        if hasattr(self, 'current_time') and self.current_time > 0:
+            self.timer_label.config(text=f"⏰ {self.current_time} сек")
+            self.current_time -= 1
+            # Планируем следующее обновление через 1000 мс (1 секунду)
+            self.timer_id = self.after(1000, self.update_timer)
+        else:
+            # Время вышло
+            self.timer_label.config(text="⏰ Время вышло!", fg="red")
+            self._disable_options()  # Отключаем кнопки
+            self.on_time_up(0)  #  time_spent_sec = 0 (не успел ответить)
 
     def stop_timer(self):
         """Останавливает таймер, если он активен"""
@@ -290,7 +284,7 @@ class QuizUI(tk.Tk):
 
         # Кнопки действий
         buttons_frame = tk.Frame(main_frame)
-        buttons_frame.pack(pady=10)
+        buttons_frame.pack(pady=30)
 
         # Кнопка "В меню"
         menu_button = tk.Button(buttons_frame,
@@ -324,31 +318,13 @@ class QuizUI(tk.Tk):
             category_button.pack(pady=10)
 
     def show_profile(self, profile_data: dict, stats: dict):
-        """Показывает экран профиля с статистикой"""
         self._cancel_timer_if_any()
-
-        # Очищаем окно
+        # print(f"[UI] Profile: {profile_data}, Stats: {stats}")
+        # Очищаем окно от предыдущих виджетов
         for widget in self.winfo_children():
             widget.destroy()
 
-        # Мягкий маппинг статистики (совместимость со старым и новым форматом)
-        games_played = stats.get("games_played", stats.get("total_games", 0))
-        best_score = stats.get("best_score", 0)
-        avg_score = stats.get("avg_score", stats.get("average_score", 0.0))
-        by_category = stats.get("by_category", [])
-
-        # Защита: преобразуем dict в list если нужно
-        if isinstance(by_category, dict):
-            by_category = [
-                {
-                    "category": k,
-                    "games": v.get("games", 0) if isinstance(v, dict) else 0,
-                    "avg_score": v.get("avg_score", 0.0) if isinstance(v, dict) else 0.0
-                }
-                for k, v in by_category.items()
-            ]
-
-        # Основной фрейм с прокруткой
+        # Создаем основной контейнер с прокруткой
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
@@ -368,70 +344,41 @@ class QuizUI(tk.Tk):
         tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
                  font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
 
-        # Общая статистика
-        stats_frame = tk.LabelFrame(main_frame, text="Общая статистика", font=("Arial", 14, "bold"))
+        tk.Label(user_frame, text="Уровень:", font=("Arial", 12, "bold")).grid(row=1, column=0, sticky="w", pady=(5, 0))
+        tk.Label(user_frame, text=profile_data.get("level", "Новичок"),
+                 font=("Arial", 12)).grid(row=1, column=1, sticky="w", padx=(10, 0), pady=(5, 0))
+
+        # Статистика
+        stats_frame = tk.LabelFrame(main_frame, text="Статистика", font=("Arial", 14, "bold"))
         stats_frame.pack(fill=tk.X, pady=20)
 
         stats_grid = tk.Frame(stats_frame)
         stats_grid.pack(padx=10, pady=10)
 
+        # Динамическое создание статистики
         stat_rows = [
-            ("Всего игр", games_played),
-            ("Лучший счет", best_score),
-            ("Средний счет", f"{avg_score:.2f}")
+            ("Всего игр", stats.get("total_games", 0)),
+            ("Лучший счет", stats.get("best_score", 0)),
+            ("Средний счет", stats.get("average_score", 0)),
+            ("Правильные ответы", f"{stats.get('correct_answers', 0)}%"),
+            ("Любимая категория", stats.get("favorite_category", "Не определена"))
         ]
 
         for i, (label, value) in enumerate(stat_rows):
             tk.Label(stats_grid, text=label + ":", font=("Arial", 11, "bold")).grid(row=i, column=0, sticky="w", pady=2)
-            tk.Label(stats_grid, text=str(value), font=("Arial", 11)).grid(row=i, column=1, sticky="w", padx=(10, 0),
-                                                                           pady=2)
-
-        # Статистика по категориям
-        if by_category:
-            cat_frame = tk.LabelFrame(main_frame, text="Статистика по категориям", font=("Arial", 14, "bold"))
-            cat_frame.pack(fill=tk.X, pady=20)
-
-            cat_grid = tk.Frame(cat_frame)
-            cat_grid.pack(padx=10, pady=10)
-
-            # Заголовки таблицы
-            tk.Label(cat_grid, text="Категория", font=("Arial", 11, "bold")).grid(row=0, column=0, padx=5, pady=2)
-            tk.Label(cat_grid, text="Игр", font=("Arial", 11, "bold")).grid(row=0, column=1, padx=5, pady=2)
-            tk.Label(cat_grid, text="Средний счет", font=("Arial", 11, "bold")).grid(row=0, column=2, padx=5, pady=2)
-
-            # Данные по категориям
-            for i, cat_stat in enumerate(by_category, 1):
-                category_name = cat_stat.get("category", "Неизвестно")
-                games = cat_stat.get("games", 0)
-                avg_score = cat_stat.get("avg_score", 0.0)
-
-                # Определяем русское название категории
-                category_names = {
-                    "history": "История",
-                    "science": "Наука",
-                    "culture": "Культура",
-                    "sport": "Спорт"
-                }
-
-                display_name = category_names.get(category_name, category_name.capitalize())
-
-                tk.Label(cat_grid, text=display_name, font=("Arial", 11)).grid(row=i, column=0, sticky="w", padx=5,
-                                                                               pady=2)
-                tk.Label(cat_grid, text=str(games), font=("Arial", 11)).grid(row=i, column=1, padx=5, pady=2)
-                tk.Label(cat_grid, text=f"{avg_score:.2f}", font=("Arial", 11)).grid(row=i, column=2, padx=5, pady=2)
+            tk.Label(stats_grid, text=str(value), font=("Arial", 11)).grid(row=i, column=1, sticky="w", padx=(10, 0), pady=2)
 
         # Кнопки действий
         buttons_frame = tk.Frame(main_frame)
         buttons_frame.pack(pady=20)
 
+# Не уверен что данная кнопка нам нужна, логика не совсем понятно как будем обновлять да и реализацию усложнит
+# вполне можно отказатся, но пока есть заглушки (временный код для тестирования пусть будет)
         edit_button = tk.Button(buttons_frame, text="Редактировать профиль",
-                                command=lambda: self._edit_profile(profile_data),
-                                width=20, height=1)
+                                command=lambda: self.on_update_profile(profile_data), width=20, height=1)
         edit_button.pack(side=tk.LEFT, padx=5)
 
-        back_button = tk.Button(buttons_frame, text="Назад в меню",
-                                command=self.on_back_to_menu,
-                                width=15, height=1)
+        back_button = tk.Button(buttons_frame, text="Назад в меню", command=self.on_back_to_menu, width=15, height=1)
         back_button.pack(side=tk.LEFT, padx=5)
 
 
