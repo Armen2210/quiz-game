@@ -15,25 +15,46 @@ def ensure_db():
 
 def main():
     ensure_db()
-
     profile = UserProfile(DB_PATH)
     game = QuizGame(DB_PATH)
     ui = QuizUI()
-
     user_id = profile.ensure_default_user()
+    categories = game.list_categories() #Антон: добавил строку # Метод Сергея
+    print(f"[DEBUG] Loaded categories: {categories}")  # ← ДОБАВЬТЕ ЭТУ СТРОКУ
+    ui.set_categories(categories) #Антон: добавил строку
+    current_question = None #Антон: добавил строку
+
+
 
     # ========== Привязка колбэков ==========
     def on_start_game(category: str):
+        nonlocal current_question  # Антон: добавил строку (Разрешаем доступ к внешней переменной)
         game.start_game(category)
         q = game.get_next_question()
         if q:
+            current_question = q #Антон: добавил строку
             ui.show_question(q, game.get_remaining(), game.get_score(), 20)
         else:
             ui.show_result(game.get_score())
 
-    def on_answer(index: int):
+    def on_answer(index: int, time_spent_sec: int): #Антон: добавли параметр "time_spent_sec: int"
+        nonlocal current_question # Антон: Строку добавил
+        if current_question: # Антон: Строку добавил
+            is_correct = game.check_answer(current_question.id, index, time_spent_sec) # Антон: Строку добавил
+            print(f"Ответ {'правильный' if is_correct else 'неправильный'}")# Антон: Строку добавил
+            # Получаем следующий вопрос # Антон: Строку добавил
+            next_q = game.get_next_question() # Антон: Строку добавил
+            if next_q: # Антон: Строку добавил
+                current_question = next_q # Антон: Строку добавил
+                ui.show_question(next_q, game.get_remaining(), game.get_score(), 20) # Антон: Строку добавил
+            else: # Антон: Строку добавил
+                ui.show_result(game.get_score()) # Антон: Строку добавил
+        else: # Антон: Строку добавил
+            print("Ошибка: нет текущего вопроса!") # Антон: Строку добавил
+
         # Заглушка: позже Армен добавит логику учета времени
-        print(f"[DEBUG] Answer chosen: {index}")
+        #print(f"[DEBUG] Answer chosen: {index}") # Антон: Строку закоментировал
+
 
     def on_time_up():
         print("[DEBUG] Time is up!")
