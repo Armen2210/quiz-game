@@ -1,12 +1,13 @@
 from pathlib import Path
 from typing import Optional, Dict, Any
-from scripts.init_db import get_connection
+from init_db import get_connection, init_database
 import sqlite3
 from datetime import datetime
 
 class UserProfile:
     def __init__(self, db_path: Path):
         self.db_path = db_path
+        init_database(db_path)
 
     def create_profile(self, name: str, avatar_path: Optional[Path] = None) -> int:
         if not name.strip():
