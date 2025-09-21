@@ -2,8 +2,8 @@ from pathlib import Path
 from ui import QuizUI
 from quiz import QuizGame
 from user import UserProfile
-import subprocess
-import sys
+from scripts.init_db import init_db
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "app.db"
@@ -11,7 +11,7 @@ DB_PATH = BASE_DIR / "data" / "app.db"
 def ensure_db():
     if not DB_PATH.exists():
         print("[INFO] Database not found, initializing...")
-        subprocess.run([sys.executable, str(BASE_DIR / "scripts" / "init_db.py")])
+        init_db(DB_PATH)
 
 def main():
     ensure_db()
