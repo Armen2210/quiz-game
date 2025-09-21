@@ -6,6 +6,7 @@ import random
 
 START_SECONDS = 20
 
+
 @dataclass
 class Question:
     id: int
@@ -13,6 +14,7 @@ class Question:
     text: str
     options: List[str]
     correct_index: int
+
 
 class QuizGame:
     def __init__(self, db_path: Path):
@@ -32,26 +34,26 @@ class QuizGame:
     def start_game(self, category: str, questions_count: int = 10) -> None:
         """Начать игру с выбором вопросов из указанной категории."""
         self.reset()
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
-            
+
             # Получаем все вопросы из категории
             cur.execute("""
                 SELECT id, category, text, option1, option2, option3, option4, correct_index 
                 FROM questions 
                 WHERE category = ?
             """, (category,))
-            
+
             rows = cur.fetchall()
-        
+
         # Если вопросов меньше чем questions_count — брать все
         if len(rows) <= questions_count:
             selected_rows = rows
         else:
             # Случайно выбираем нужное количество вопросов
             selected_rows = random.sample(rows, questions_count)
-        
+
         # Преобразуем в объекты Question
         for row in selected_rows:
             question = Question(
@@ -79,20 +81,20 @@ class QuizGame:
             if question.id == question_id:
                 current_question = question
                 break
-        
+
         if current_question is None:
             return False
-        
+
         # Проверяем правильность ответа
         is_correct = selected_index == current_question.correct_index
-        
+
         if is_correct:
             # Базовые 100 очков за правильный ответ
             base_points = 100
             # Бонус за скорость: (20 - время) * 5
             speed_bonus = max(0, (START_SECONDS - time_spent_sec) * 5)
             self.score += base_points + int(speed_bonus)
-        
+
         return is_correct
 
     def get_score(self) -> int:
