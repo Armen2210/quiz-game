@@ -11,6 +11,7 @@ class QuizUI(tk.Tk):
         self.timer_id = None
         self.total_seconds = 0
         self._categories: List[str] = []
+        self.current_question_id = None
 
     def _disable_options(self):
         """Отключает все кнопки вариантов ответов"""
@@ -23,7 +24,7 @@ class QuizUI(tk.Tk):
         """Обработчик клика по варианту ответа"""
         spent = int(self.total_seconds - self.current_time)  # Вычисляем время
         self._disable_options()  # Отключаем кнопки и таймер
-        self.on_answer(idx, spent)  # Вызываем колбэк с временем
+        self.on_answer(self.current_question_id, idx, spent)
 
     def _cancel_timer_if_any(self):
         """Отменяет таймер если он активен"""
@@ -40,7 +41,7 @@ class QuizUI(tk.Tk):
         else:
             # Время вышло
             self._disable_options()
-            self.on_time_up(int(self.total_seconds))  # ← Передаем общее время
+            self.on_time_up(self.current_question_id, self.total_seconds)
 
     def _edit_profile(self, profile_data: dict):
         """Диалог редактирования профиля"""
@@ -64,8 +65,8 @@ class QuizUI(tk.Tk):
 
     def bind_actions(self,
                      on_start_game: Callable[[str], None],
-                     on_answer: Callable[[int, int], None],
-                     on_time_up: Callable[[int], None],
+                     on_answer: Callable[[int, int, int], None],
+                     on_time_up: Callable[[int, int], None],
                      on_open_profile: Callable[[], None],
                      on_update_profile: Callable[[str, Optional[str]], None],
                      on_back_to_menu: Callable[[], None]
@@ -178,6 +179,7 @@ class QuizUI(tk.Tk):
         self._cancel_timer_if_any()
         for widget in self.winfo_children():
             widget.destroy()
+        self.current_question_id = question.id
 
         # Сохраняем время
         self.total_seconds = int(timer_sec)
