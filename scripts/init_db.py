@@ -112,4 +112,3 @@ def init_database(db_path: Path) -> None:
         raise
     finally:
         conn.close()
-
