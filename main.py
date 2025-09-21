@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 from ui import QuizUI
 from quiz import QuizGame
 from user import UserProfile
@@ -48,6 +49,7 @@ def main():
                 current_question = next_q # Антон: Строку добавил
                 ui.show_question(next_q, game.get_remaining(), game.get_score(), 20) # Антон: Строку добавил
             else: # Антон: Строку добавил
+                profile.save_result(user_id, game.get_score(), 0, current_question.category) # Антон: Строку добавил
                 ui.show_result(game.get_score()) # Антон: Строку добавил
         else: # Антон: Строку добавил
             print("Ошибка: нет текущего вопроса!") # Антон: Строку добавил
@@ -56,15 +58,20 @@ def main():
         #print(f"[DEBUG] Answer chosen: {index}") # Антон: Строку закоментировал
 
 
-    def on_time_up():
-        print("[DEBUG] Time is up!")
+    def on_time_up(time_spent_sec: int):  # Антон: добавил параметры "time_spent_sec: int"
+        # print("[DEBUG] Time is up!") # Антон: Строку закоментировал
+        nonlocal current_question # Антон: Строку добавил
+        if current_question: # Антон: Строку добавил
+            # Сохраняем результат с временем
+            profile.save_result(user_id, game.get_score(), time_spent_sec, current_question.category) # Антон: Строку добавил
+        ui.show_result(game.get_score()) # Антон: Строку добавил
 
     def on_open_profile():
         data = profile.load_profile(user_id)
         stats = profile.get_stats(user_id)
         ui.show_profile(data, stats)
 
-    def on_update_profile(name, avatar_path):
+    def on_update_profile(name: str, avatar_path: Optional[str]):
         profile.update_profile(user_id, name, avatar_path)
         on_open_profile()
 
