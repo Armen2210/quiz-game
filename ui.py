@@ -1,61 +1,21 @@
 import tkinter as tk
 from quiz import Question
-from typing import List, Optional, Dict, Any, Callable
 
 class QuizUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Quiz Game")
         self.geometry("500x500")
+        # Добавляем атрибут для ID таймера
         self.timer_id = None
-        self.total_seconds = 0
-        self._categories: List[str] = []
-
-    def _disable_options(self):
-        """Отключает все кнопки вариантов ответов"""
-        if hasattr(self, 'option_buttons'):
-            for btn in self.option_buttons:
-                btn.config(state=tk.DISABLED)
-        self._cancel_timer_if_any()
-
-    def _on_answer_click(self, idx: int):
-        """Обработчик клика по варианту ответа"""
-        spent = int(self.total_seconds - self.current_time)  # Вычисляем время
-        self._disable_options()  # Отключаем кнопки и таймер
-        self.on_answer(idx, spent)  # Вызываем колбэк с временем
-
-    def _cancel_timer_if_any(self):
-        """Отменяет таймер если он активен"""
-        if hasattr(self, 'timer_id') and self.timer_id:
-            self.after_cancel(self.timer_id)
-            self.timer_id = None
-
-    def _tick(self):
-        """Обновление таймера каждую секунду"""
-        if self.current_time > 0 and hasattr(self, "timer_label"):
-            self.timer_label.config(text=f"⏰ {self.current_time} сек")
-            self.current_time -= 1
-            self.timer_id = self.after(1000, self._tick)  # ← Планируем следующий tick
-        else:
-            # Время вышло
-            self._disable_options()
-            self.on_time_up(int(self.total_seconds))  # ← Передаем общее время
-
-    def _cancel_timer_if_any(self):
-        """Отменяет таймер если он активен"""
-        if getattr(self, "timer_id", None) is not None:
-            self.after_cancel(self.timer_id)
-            self.timer_id = None
-
 
     def bind_actions(self,
-                     on_start_game: Callable[[str], None],
-                     on_answer: Callable[[int, int], None],
-                     on_time_up: Callable[[int], None],
-                     on_open_profile: Callable[[], None],
-                     on_update_profile: Callable[[str, Optional[str]], None],
-                     on_back_to_menu: Callable[[], None]
-                     ) -> None:
+                     on_start_game,
+                     on_answer,
+                     on_time_up,
+                     on_open_profile,
+                     on_update_profile,
+                     on_back_to_menu):
         self.on_start_game = on_start_game
         self.on_answer = on_answer
         self.on_time_up = on_time_up
@@ -63,13 +23,8 @@ class QuizUI(tk.Tk):
         self.on_update_profile = on_update_profile
         self.on_back_to_menu = on_back_to_menu
 
-    def set_categories(self, categories: List[str]) -> None:
-        """Устанавливает список доступных категорий"""
-        self._categories = categories or []
-        print(f"[UI] Categories set: {self._categories}")  # Для отладки
-
     def show_main_menu(self):
-        self._cancel_timer_if_any()
+        # print("[UI] Show main menu")
         # Очищаем окно от предыдущих виджетов
         for widget in self.winfo_children():
             widget.destroy()
@@ -78,8 +33,7 @@ class QuizUI(tk.Tk):
         title_label = tk.Label(self, text="Викторина", font=("Arial", 24))
         title_label.pack(pady=50)
 
-        start_button = tk.Button(self, text="Начать игру", command=lambda: self.show_category_menu(self._categories),
-                                 width=20, height=2)
+        start_button = tk.Button(self, text="Начать игру", command=self.on_start_game, width=20, height=2)
         start_button.pack(pady=10)
 
         profile_button = tk.Button(self, text="Профиль", command=self.on_open_profile, width=20, height=2)
@@ -90,8 +44,7 @@ class QuizUI(tk.Tk):
 
 
     def show_category_menu(self, categories):
-        print(f"[UI] Showing category menu with: {categories}")
-        self._cancel_timer_if_any()
+        # print("[UI] Show category menu")
         """
         Отображает меню выбора категории с кнопками для каждой категории
 
@@ -119,7 +72,7 @@ class QuizUI(tk.Tk):
         categories_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
         # Создаем кнопки для каждой категории
-        for category in categories:
+        for i, category in enumerate(categories):
             # Определяем русское название для категории
             category_names = {
                 "history": "История",
@@ -131,7 +84,7 @@ class QuizUI(tk.Tk):
             display_name = category_names.get(category, category.capitalize())
 
             # Создаем кнопку категории
-            category_btn = tk.Button(self,
+            category_btn = tk.Button(categories_frame,
                                      text=display_name,
                                      command=lambda c=category: self.on_start_game(c),
                                      width=25,
@@ -152,6 +105,7 @@ class QuizUI(tk.Tk):
         back_button.pack(pady=20)
 
     def show_question(self, question: Question, remaining: int, score: int, timer_sec: int):
+        # print(f"[UI] Question: {question.text}")
         """
             Отображает экран с вопросом и вариантами ответов
 
@@ -162,13 +116,8 @@ class QuizUI(tk.Tk):
                 timer_sec: Время на ответ в секундах
             """
         # Очищаем окно от предыдущих виджетов
-        self._cancel_timer_if_any()
         for widget in self.winfo_children():
             widget.destroy()
-
-        # Сохраняем общее время на вопрос
-        self.total_seconds = int(timer_sec)  # ← Добавить
-        self.current_time = int(timer_sec)
 
         # Основной фрейм
         main_frame = tk.Frame(self)
@@ -208,20 +157,20 @@ class QuizUI(tk.Tk):
         options_frame.pack(fill=tk.BOTH, expand=True, pady=20)
 
         # Создаем кнопки вариантов ответов
-        self.option_buttons = []
+        options = [question.option1, question.option2,
+                   question.option3, question.option4]
 
-        for i, opt in enumerate(question.options):
-            btn = tk.Button(options_frame,
-                            text=option,
-                            command=lambda idx=i: self.on_answer_click(idx),
-                            width=40,
-                            height=2,
-                            font=("Arial", 11),
-                            bg="#e8f4f8",
-                            relief=tk.RAISED,
-                            wraplength=400)
-            btn.pack(pady=8)
-            self.option_buttons.append(btn)
+        for i, option in enumerate(options):
+            option_btn = tk.Button(options_frame,
+                                   text=option,
+                                   command=lambda idx=i: self.on_answer(idx),
+                                   width=40,
+                                   height=2,
+                                   font=("Arial", 11),
+                                   bg="#e8f4f8",
+                                   relief=tk.RAISED,
+                                   wraplength=400)
+            option_btn.pack(pady=8)
 
         # Кнопка выхода (на случай, если пользователь хочет прервать игру)
         exit_button = tk.Button(main_frame,
@@ -232,7 +181,6 @@ class QuizUI(tk.Tk):
                                 font=("Arial", 10),
                                 bg="#ffcccc")
         exit_button.pack(pady=10)
-        self.timer_id = self.after(1000, self._tick)  # ← Запуск таймера
 
     def update_timer(self):
         """Обновляет отображение таймера каждую секунду"""
@@ -244,81 +192,13 @@ class QuizUI(tk.Tk):
         else:
             # Время вышло
             self.timer_label.config(text="⏰ Время вышло!", fg="red")
-            self._disable_options()  # Отключаем кнопки
-            self.on_time_up(0)  #  time_spent_sec = 0 (не успел ответить)
-
-    def stop_timer(self):
-        """Останавливает таймер, если он активен"""
-        self._cancel_timer_if_any()  # ← Используем новый метод
+            # Вызываем callback для обработки истечения времени
+            self.on_time_up()
 
     def show_result(self, score: int):
-        """Показывает экран с результатами игры"""
-        self._cancel_timer_if_any()
-
-        # Очищаем окно
-        for widget in self.winfo_children():
-            widget.destroy()
-
-        # Основной фрейм
-        main_frame = tk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        # Заголовок
-        title_label = tk.Label(main_frame, text="Результаты викторины",
-                               font=("Arial", 20, "bold"))
-        title_label.pack(pady=20)
-
-        # Разделитель
-        tk.Frame(main_frame, height=2, bg="gray").pack(fill=tk.X, pady=10)
-
-        # Счет
-        score_frame = tk.Frame(main_frame)
-        score_frame.pack(pady=30)
-
-        tk.Label(score_frame, text="Ваш счет:",
-                 font=("Arial", 16)).pack()
-
-        tk.Label(score_frame, text=str(score),
-                 font=("Arial", 24, "bold"),
-                 fg="green").pack(pady=10)
-
-        # Кнопки действий
-        buttons_frame = tk.Frame(main_frame)
-        buttons_frame.pack(pady=30)
-
-        # Кнопка "В меню"
-        menu_button = tk.Button(buttons_frame,
-                                text="В меню",
-                                command=self.on_back_to_menu,
-                                width=15,
-                                height=2,
-                                font=("Arial", 12),
-                                bg="#e0e0e0")
-        menu_button.pack(pady=10)
-
-        # Кнопка "Профиль"
-        profile_button = tk.Button(buttons_frame,
-                                   text="Профиль",
-                                   command=self.on_open_profile,
-                                   width=15,
-                                   height=2,
-                                   font=("Arial", 12),
-                                   bg="#e0e0e0")
-        profile_button.pack(pady=10)
-
-        # Опционально: Кнопка "Выбор категории"
-        if hasattr(self, '_categories') and self._categories:
-            category_button = tk.Button(buttons_frame,
-                                        text="Выбор категории",
-                                        command=lambda: self.show_category_menu(self._categories),
-                                        width=15,
-                                        height=2,
-                                        font=("Arial", 12),
-                                        bg="#e0e0e0")
-            category_button.pack(pady=10)
+        print(f"[UI] Result: {score}")
 
     def show_profile(self, profile_data: dict, stats: dict):
-        self._cancel_timer_if_any()
         # print(f"[UI] Profile: {profile_data}, Stats: {stats}")
         # Очищаем окно от предыдущих виджетов
         for widget in self.winfo_children():
@@ -386,3 +266,87 @@ class QuizUI(tk.Tk):
 
 
 
+# Временный код для тестирования(будет удален позже)
+if __name__ == "__main__":
+    # Создаем экземпляр приложения
+    app = QuizUI()
+
+
+    # Создаем заглушки для callback-функций
+    def dummy_start():
+        print("Игра начата!")
+        # Для теста переключаемся на профиль
+        test_profile_data = {
+            "name": "Антон",
+            "level": "Эксперт",
+            "avatar": "avatar1.png"
+        }
+        test_stats = {
+            "total_games": 15,
+            "best_score": 850,
+            "average_score": 620,
+            "correct_answers": 78,
+            "favorite_category": "Наука"
+        }
+        app.show_profile(test_profile_data, test_stats)
+
+
+    def dummy_open_profile():
+        print("Профиль открыт!")
+        # Тестовые данные профиля
+        test_profile_data = {
+            "name": "Антон",
+            "level": "Эксперт",
+            "avatar": "avatar1.png"
+        }
+        test_stats = {
+            "total_games": 15,
+            "best_score": 850,
+            "average_score": 620,
+            "correct_answers": 78,
+            "favorite_category": "Наука"
+        }
+        app.show_profile(test_profile_data, test_stats)
+
+
+    def dummy_back_to_menu():
+        print("Возврат в меню")
+        app.show_main_menu()
+
+
+    def dummy_start_game(category=None):
+        print(f"Начинаем игру в категории: {category}")
+        # Для теста покажем сообщение о выборе категории
+        test_categories = ["history", "science", "culture", "sport"]
+        app.show_category_menu(test_categories)
+
+
+    def dummy_show_question():
+        # Создаем тестовый вопрос на основе структуры CSV
+        class TestQuestion:
+            def __init__(self):
+                self.text = "Столица Франции?"
+                self.option1 = "Париж"
+                self.option2 = "Берлин"
+                self.option3 = "Рим"
+                self.option4 = "Мадрид"
+                self.correct_index = 0
+
+        test_question = TestQuestion()
+        app.show_question(question=test_question, remaining=5, score=100, timer_sec=15)
+
+    # Привязываем заглушки к интерфейсу
+    app.bind_actions(
+        on_start_game=dummy_show_question,  # ← Изменили здесь
+        on_answer=lambda answer: print(f"Ответ: {answer}"),
+        on_time_up=lambda: print("Время вышло!"),
+        on_open_profile=dummy_open_profile,
+        on_update_profile=lambda data: print(f"Профиль обновлен: {data}"),
+        on_back_to_menu=dummy_back_to_menu
+    )
+
+    # Показываем главное меню
+    app.show_main_menu()
+
+    # Запускаем главный цикл приложения
+    app.mainloop()
