@@ -8,7 +8,7 @@ class QuizUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Quiz Game")
-        self.geometry("600x600")
+        self.geometry("600x700")
         self.timer_id = None
         self.total_seconds = 0
         self._categories: List[str] = []
@@ -276,18 +276,6 @@ class QuizUI(tk.Tk):
         # Запускаем таймер
         self.timer_id = self.after(1000, self._tick)
 
-    # def update_timer(self):
-    #     """Обновляет отображение таймера каждую секунду"""
-    #     if hasattr(self, 'current_time') and self.current_time > 0:
-    #         self.timer_label.config(text=f"⏰ {self.current_time} сек")
-    #         self.current_time -= 1
-    #         # Планируем следующее обновление через 1000 мс (1 секунду)
-    #         self.timer_id = self.after(1000, self.update_timer)
-    #     else:
-    #         # Время вышло
-    #         self.timer_label.config(text="⏰ Время вышло!", fg="red")
-    #         self._disable_options()  # Отключаем кнопки
-    #         self.on_time_up(0)  #  time_spent_sec = 0 (не успел ответить)
 
     def stop_timer(self):
         """Останавливает таймер, если он активен"""
@@ -497,13 +485,26 @@ class QuizUI(tk.Tk):
         # Кнопки действий
         buttons_frame = tk.Frame(main_frame)
         buttons_frame.pack(pady=20)
+        print("[DEBUG] Created buttons_frame")
 
         edit_button = tk.Button(buttons_frame, text="Редактировать профиль",
                                 command=lambda: self._edit_profile(profile_data),
-                                width=20, height=1)
+                                width=20, height=1,
+                                bg="lightgray", fg="black",
+                                font=("Arial", 10, "bold"))
         edit_button.pack(side=tk.LEFT, padx=5)
+        print("[DEBUG] Created edit_button")
 
         back_button = tk.Button(buttons_frame, text="Назад в меню",
                                 command=self.on_back_to_menu,
-                                width=15, height=1)
+                                width=15, height=1,
+                                bg="lightblue", fg="black",
+                                font=("Arial", 10, "bold"))
         back_button.pack(side=tk.LEFT, padx=5)
+        print("[DEBUG] Created back_button")
+        
+        # Проверяем, что метод привязан
+        if hasattr(self, 'on_back_to_menu'):
+            print("[DEBUG] on_back_to_menu method is bound")
+        else:
+            print("[ERROR] on_back_to_menu method is NOT bound!")
