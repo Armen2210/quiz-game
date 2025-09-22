@@ -277,10 +277,6 @@ class QuizUI(tk.Tk):
         self.timer_id = self.after(1000, self._tick)
 
 
-    def stop_timer(self):
-        """Останавливает таймер, если он активен"""
-        self._cancel_timer_if_any()  # ← Используем новый метод
-
     def show_result(self, score: int):
         """Показывает экран с результатами игры"""
         self._cancel_timer_if_any()
