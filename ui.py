@@ -46,25 +46,25 @@ class QuizUI(tk.Tk):
 
     def _edit_profile(self, profile_data: dict):
         """Диалог редактирования профиля"""
-        # Запрос имени
-        new_name = simpledialog.askstring(
-            "Имя",
-            "Введите имя:",
-            initialvalue=profile_data.get("name", "")
-        )
-        # Если пользователь нажал Cancel
-        if new_name is None:
-            return
-        # Запрос аватара
-        avatar_path = filedialog.askopenfilename(
-            title="Выберите аватар",
-            filetypes=[("Images", "*.png;*.jpg;*.jpeg")]
-        )
-
-        if not avatar_path:  # нажал Cancel
+        try:
+            # Запрос имени
+            new_name = simpledialog.askstring(
+                "Редактирование профиля",
+                "Введите новое имя:",
+                initialvalue=profile_data.get("name", "")
+            )
+            # Если пользователь нажал Cancel
+            if new_name is None:
+                return
+            
+            # Пока только обновляем имя, без аватара чтобы избежать проблем с filedialog
             self.on_update_profile(new_name, None)
-        else:
-            self.on_update_profile(new_name, avatar_path)
+            
+        except Exception as e:
+            print(f"[ERROR] Error in _edit_profile: {e}")
+            # Возвращаемся к профилю в случае ошибки
+            if hasattr(self, 'on_back_to_menu'):
+                self.on_back_to_menu()
 
     def show_profile(self, profile_data: dict, stats: dict):
         self._cancel_timer_if_any()

@@ -58,13 +58,41 @@ def main():
             ui.show_result(game.get_score())
 
     def on_open_profile():
-        data = profile.load_profile(user_id)
-        stats = profile.get_stats(user_id)
-        ui.show_profile(data, stats)
+        try:
+            print(f"[DEBUG] Loading profile for user_id: {user_id}")
+            data = profile.load_profile(user_id)
+            stats = profile.get_stats(user_id)
+            print(f"[DEBUG] Profile loaded: {data}")
+            ui.show_profile(data, stats)
+        except Exception as e:
+            print(f"[ERROR] Error loading profile: {e}")
+            try:
+                import tkinter.messagebox as messagebox
+                messagebox.showerror("Ошибка", f"Не удалось загрузить профиль: {str(e)}")
+            except Exception:
+                pass
+            ui.show_main_menu()
 
     def on_update_profile(name, avatar_path):
-        profile.update_profile(user_id, name, avatar_path)
-        on_open_profile()
+        try:
+            print(f"[DEBUG] Updating profile: name='{name}', avatar_path='{avatar_path}'")
+            profile.update_profile(user_id, name, avatar_path)
+            print("[DEBUG] Profile updated successfully")
+            on_open_profile()
+        except Exception as e:
+            print(f"[ERROR] Error updating profile: {e}")
+            try:
+                # Показываем ошибку пользователю
+                import tkinter.messagebox as messagebox
+                messagebox.showerror("Ошибка", f"Не удалось обновить профиль: {str(e)}")
+            except Exception as msg_error:
+                print(f"[ERROR] Error showing message box: {msg_error}")
+            # Возвращаемся к профилю без изменений
+            try:
+                on_open_profile()
+            except Exception as profile_error:
+                print(f"[ERROR] Error reopening profile: {profile_error}")
+                ui.show_main_menu()
 
     def on_back_to_menu():
         ui.show_main_menu()

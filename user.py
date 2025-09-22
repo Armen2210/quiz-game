@@ -63,7 +63,11 @@ class UserProfile:
         conn = get_connection(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
-        current_name = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        if not result:
+            conn.close()
+            raise ValueError(f"Пользователь с ID {user_id} не найден")
+        current_name = result[0]
 
         # Обновляем имя только если оно реально изменилось
         if name is not None and name.strip() and name.strip() != current_name:
