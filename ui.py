@@ -2,13 +2,13 @@ import tkinter as tk
 from tkinter import simpledialog, filedialog
 from quiz import Question
 from typing import List, Optional, Dict, Any, Callable
-from PIL import Image, ImageTk
+# from PIL import Image, ImageTk
 
 class QuizUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Quiz Game")
-        self.geometry("600x600")
+        self.geometry("600x622")
         self.timer_id = None
         self.total_seconds = 0
         self._categories: List[str] = []
@@ -65,50 +65,6 @@ class QuizUI(tk.Tk):
             self.on_update_profile(new_name, None)
         else:
             self.on_update_profile(new_name, avatar_path)
-
-    def show_profile(self, profile_data: dict, stats: dict):
-        self._cancel_timer_if_any()
-
-        # Очистка окна
-        for widget in self.winfo_children():
-            widget.destroy()
-
-        # Основной контейнер
-        main_frame = tk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        # Заголовок
-        title_label = tk.Label(main_frame, text="Профиль игрока",
-                               font=("Arial", 20, "bold"))
-        title_label.pack(pady=10)
-
-        # Разделитель
-        tk.Frame(main_frame, height=2, bg="gray").pack(fill=tk.X, pady=10)
-
-        # === блок информации о пользователе ===
-        user_frame = tk.Frame(main_frame)  # ← создаём user_frame здесь
-        user_frame.pack(fill=tk.X, pady=10)
-
-        tk.Label(user_frame, text="Имя:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
-                 font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
-
-        # --- аватар (если есть) ---
-
-        avatar_path = profile_data.get("avatar")
-        if avatar_path:
-            try:
-                img = Image.open(avatar_path)
-                img = img.resize((120, 120))  # немного больше для наглядности
-                photo = ImageTk.PhotoImage(img)
-
-                # сохраняем в self, а не в локальную переменную
-                self.avatar_photo = photo
-
-                avatar_label = tk.Label(user_frame, image=self.avatar_photo)
-                avatar_label.grid(row=1, column=0, columnspan=2, pady=10)
-            except Exception as e:
-                print(f"[WARNING] Ошибка загрузки аватара: {e}")
 
     def bind_actions(self,
                      on_start_game: Callable[[str], None],
@@ -290,23 +246,6 @@ class QuizUI(tk.Tk):
         # Запускаем таймер
         self.timer_id = self.after(1000, self._tick)
 
-    # def update_timer(self):
-    #     """Обновляет отображение таймера каждую секунду"""
-    #     if hasattr(self, 'current_time') and self.current_time > 0:
-    #         self.timer_label.config(text=f"⏰ {self.current_time} сек")
-    #         self.current_time -= 1
-    #         # Планируем следующее обновление через 1000 мс (1 секунду)
-    #         self.timer_id = self.after(1000, self.update_timer)
-    #     else:
-    #         # Время вышло
-    #         self.timer_label.config(text="⏰ Время вышло!", fg="red")
-    #         self._disable_options()  # Отключаем кнопки
-    #         self.on_time_up(0)  #  time_spent_sec = 0 (не успел ответить)
-
-    def stop_timer(self):
-        """Останавливает таймер, если он активен"""
-        self._cancel_timer_if_any()  # ← Используем новый метод
-
     def show_result(self, score: int):
         """Показывает экран с результатами игры"""
         self._cancel_timer_if_any()
@@ -381,7 +320,7 @@ class QuizUI(tk.Tk):
         for widget in self.winfo_children():
             widget.destroy()
 
-        # Мягкий маппинг статистики (совместимость со старым и новым форматом)
+        # Мягкий маппинг статистики
         games_played = stats.get("games_played", stats.get("total_games", 0))
         best_score = stats.get("best_score", 0)
         avg_score = stats.get("avg_score", stats.get("average_score", 0.0))
@@ -410,13 +349,39 @@ class QuizUI(tk.Tk):
         # Разделитель
         tk.Frame(main_frame, height=2, bg="gray").pack(fill=tk.X, pady=10)
 
-        # Информация о пользователе
-        user_frame = tk.Frame(main_frame)
-        user_frame.pack(fill=tk.X, pady=10)
+        # === БЛОК АВАТАРА И ИМЕНИ ===
+        avatar_frame = tk.Frame(main_frame)
+        avatar_frame.pack(fill=tk.X, pady=10)
 
-        tk.Label(user_frame, text="Имя:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
-                 font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
+        # Аватар (левая сторона)
+        avatar_path = profile_data.get("avatar")
+        if avatar_path:
+            try:
+                from PIL import Image, ImageTk  # ← Локальный импорт
+                img = Image.open(avatar_path)
+                img = img.resize((100, 100), Image.Resampling.LANCZOS)
+                self.avatar_photo = ImageTk.PhotoImage(img)
+
+                avatar_label = tk.Label(avatar_frame, image=self.avatar_photo)
+                avatar_label.grid(row=0, column=0, rowspan=2, padx=(0, 20), sticky="n")
+            except Exception as e:
+                print(f"[WARNING] Ошибка загрузки аватара: {e}")
+                # Заглушка если аватар не загрузился
+                no_avatar_label = tk.Label(avatar_frame, text="🖼️", font=("Arial", 24))
+                no_avatar_label.grid(row=0, column=0, rowspan=2, padx=(0, 20), sticky="n")
+        else:
+            # Заглушка если нет аватара
+            no_avatar_label = tk.Label(avatar_frame, text="🖼️", font=("Arial", 24))
+            no_avatar_label.grid(row=0, column=0, rowspan=2, padx=(0, 20), sticky="n")
+
+        # Только имя пользователя (правая сторона от аватара)
+        name_frame = tk.Frame(avatar_frame)
+        name_frame.grid(row=0, column=1, sticky="w")
+
+        tk.Label(name_frame, text="Имя:",
+                 font=("Arial", 12, "bold")).pack(anchor="w")
+        tk.Label(name_frame, text=profile_data.get("name", "Не указано"),
+                 font=("Arial", 12)).pack(anchor="w", pady=(5, 0))
 
         # Общая статистика
         stats_frame = tk.LabelFrame(main_frame, text="Общая статистика", font=("Arial", 14, "bold"))
