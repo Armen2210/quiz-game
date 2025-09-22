@@ -232,3 +232,6 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+# === Database files ===
+data/app.db
+
