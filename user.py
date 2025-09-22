@@ -90,7 +90,19 @@ class UserProfile:
             conn.commit()
         except sqlite3.IntegrityError:
             conn.rollback()
-            raise ValueError(f"Имя '{name}' уже занято другим пользователем")
+            # Проверяем, не пытается ли пользователь установить своё же имя
+            if name and name.strip() == current_name:
+                # Это нормально - пользователь не меняет имя
+                pass
+            else:
+                # Проверяем, занято ли имя другим пользователем
+                cursor.execute("SELECT id FROM users WHERE name = ? AND id != ?", (name.strip(), user_id))
+                existing_user = cursor.fetchone()
+                if existing_user:
+                    raise ValueError(f"Имя '{name}' уже занято другим пользователем")
+                else:
+                    # Другая ошибка целостности
+                    raise ValueError("Ошибка при обновлении профиля")
         finally:
             conn.close()
 

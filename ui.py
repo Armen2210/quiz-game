@@ -57,8 +57,37 @@ class QuizUI(tk.Tk):
             if new_name is None:
                 return
             
-            # Пока только обновляем имя, без аватара чтобы избежать проблем с filedialog
-            self.on_update_profile(new_name, None)
+            # Безопасный запрос аватара
+            avatar_path = None
+            try:
+                # Спрашиваем, хочет ли пользователь выбрать аватар
+                import tkinter.messagebox as messagebox
+                want_avatar = messagebox.askyesno(
+                    "Аватар", 
+                    "Хотите выбрать аватар?"
+                )
+                
+                if want_avatar:
+                    # Безопасный вызов filedialog с дополнительными проверками
+                    try:
+                        avatar_path = filedialog.askopenfilename(
+                            title="Выберите аватар",
+                            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp")]
+                        )
+                        # Если пользователь отменил выбор, avatar_path будет пустой строкой
+                        if not avatar_path:
+                            avatar_path = None
+                    except Exception as dialog_error:
+                        print(f"[WARNING] Avatar selection failed: {dialog_error}")
+                        avatar_path = None
+                        messagebox.showinfo("Информация", "Выбор аватара недоступен, сохраняем только имя")
+                        
+            except Exception as avatar_error:
+                print(f"[WARNING] Avatar dialog error: {avatar_error}")
+                avatar_path = None
+            
+            # Обновляем профиль (имя и аватар если выбран)
+            self.on_update_profile(new_name, avatar_path)
             
         except Exception as e:
             print(f"[ERROR] Error in _edit_profile: {e}")
@@ -66,49 +95,6 @@ class QuizUI(tk.Tk):
             if hasattr(self, 'on_back_to_menu'):
                 self.on_back_to_menu()
 
-    def show_profile(self, profile_data: dict, stats: dict):
-        self._cancel_timer_if_any()
-
-        # Очистка окна
-        for widget in self.winfo_children():
-            widget.destroy()
-
-        # Основной контейнер
-        main_frame = tk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        # Заголовок
-        title_label = tk.Label(main_frame, text="Профиль игрока",
-                               font=("Arial", 20, "bold"))
-        title_label.pack(pady=10)
-
-        # Разделитель
-        tk.Frame(main_frame, height=2, bg="gray").pack(fill=tk.X, pady=10)
-
-        # === блок информации о пользователе ===
-        user_frame = tk.Frame(main_frame)  # ← создаём user_frame здесь
-        user_frame.pack(fill=tk.X, pady=10)
-
-        tk.Label(user_frame, text="Имя:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
-                 font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
-
-        # --- аватар (если есть) ---
-
-        avatar_path = profile_data.get("avatar")
-        if avatar_path:
-            try:
-                img = Image.open(avatar_path)
-                img = img.resize((120, 120))  # немного больше для наглядности
-                photo = ImageTk.PhotoImage(img)
-
-                # сохраняем в self, а не в локальную переменную
-                self.avatar_photo = photo
-
-                avatar_label = tk.Label(user_frame, image=self.avatar_photo)
-                avatar_label.grid(row=1, column=0, columnspan=2, pady=10)
-            except Exception as e:
-                print(f"[WARNING] Ошибка загрузки аватара: {e}")
 
     def bind_actions(self,
                      on_start_game: Callable[[str], None],
@@ -417,6 +403,43 @@ class QuizUI(tk.Tk):
         tk.Label(user_frame, text="Имя:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w")
         tk.Label(user_frame, text=profile_data.get("name", "Не указано"),
                  font=("Arial", 12)).grid(row=0, column=1, sticky="w", padx=(10, 0))
+
+        # --- аватар (если есть) ---
+        avatar_path = profile_data.get("avatar")
+        if avatar_path:
+            print(f"[DEBUG] Trying to load avatar: {avatar_path}")
+            try:
+                import os
+                if not os.path.exists(avatar_path):
+                    print(f"[WARNING] Avatar file not found: {avatar_path}")
+                else:
+                    print(f"[DEBUG] Avatar file exists, loading...")
+                    img = Image.open(avatar_path)
+                    print(f"[DEBUG] Original image size: {img.size}, mode: {img.mode}")
+                    
+                    # Конвертируем в RGB если нужно
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                        print(f"[DEBUG] Converted to RGB mode")
+                    
+                    img = img.resize((120, 120), Image.LANCZOS)
+                    print(f"[DEBUG] Resized to: {img.size}")
+                    
+                    photo = ImageTk.PhotoImage(img)
+                    print(f"[DEBUG] Created PhotoImage successfully")
+
+                    # сохраняем в self, а не в локальную переменную
+                    self.avatar_photo = photo
+
+                    avatar_label = tk.Label(user_frame, image=self.avatar_photo, bd=2, relief="solid")
+                    avatar_label.grid(row=1, column=0, columnspan=2, pady=10)
+                    print(f"[DEBUG] Avatar displayed successfully")
+            except Exception as e:
+                print(f"[ERROR] Ошибка загрузки аватара: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"[DEBUG] No avatar path in profile data")
 
         # Общая статистика
         stats_frame = tk.LabelFrame(main_frame, text="Общая статистика", font=("Arial", 14, "bold"))
