@@ -232,3 +232,4 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+data/app.db
