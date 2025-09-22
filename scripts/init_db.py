@@ -45,7 +45,8 @@ def init_database(db_path: Path) -> None:
             correct_index INTEGER NOT NULL CHECK (correct_index BETWEEN 0 AND 3)
         )""")
 
-        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_name ON users(name)")
+        # Убираем уникальный индекс на имя - разрешаем одинаковые имена
+        # cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_name ON users(name)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_results_user ON results(user_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_results_category ON results(category)")
 
